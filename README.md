@@ -29,8 +29,8 @@ In the data document of the carrier named 'Budbee':
 {
   "BudbeeTransport": {
     "test": true,
-    "apiKey": "d1c1aa0d-60a6-4b1d-9ab3-38066bb6ea51",
-    "apiSecret": "8bc90286-15b1-4059-ad86-bda16cf713d74fec3d7e-944d-4c65-ae51-9231591e1e4a",
+    "apiKey": "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
+    "apiSecret": "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxx",
     "collectionId": 821
   }
 }
@@ -40,7 +40,7 @@ It is possible to overwrite this configuration for individual sales channels by 
 
 For your convenience the application is initially configured to use our test credentials. You may use this configuration as long as you keep the value of the test attribute to true.
 
-To get your own credentials contact Postnord.
+To get your own credentials contact Budbee.
 
 # Events
 
@@ -48,7 +48,7 @@ To get your own credentials contact Postnord.
 
 When packing of a shipment is completed, the application registers the shipment with Budbee. The shipment is updated with the carriers shipment number.
 
-The shipping containers are updated with the tracking numbers assigned to the corresponding Postnord packages.
+The shipping containers are updated with the tracking numbers assigned to the corresponding Budbee parcels.
 
 Shipping labels are attached to the shipment.
 
