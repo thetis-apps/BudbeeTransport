@@ -238,13 +238,20 @@ exports.packingCompletedHandler = async (event, context) => {
 		    "additionalInfo": shipment.notesOnDelivery
 		};
   
-	budbeeOrder.requireSignature = false;
-	budbeeOrder.additionalServices = {
-	        "identificationCheckRequired": false,
-	        "recipientMinimumAge": 0,
-	        "recipientMustMatchEndCustomer": false,
-	        "numberOfMissRetries": null
-		};
+	let dataDocument = JSON.parse(shipment.dataDocument);
+	let shipmentSetup = dataDocument.BudbeeTransport;
+	if (shipmentSetup) {
+		budbeeOrder.requireSignature = shipmentSetup.requireSignature;
+		budbeeOrder.additionalServices = shipmentSetup.additionalServices;  
+	} else {
+		budbeeOrder.requireSignature = false;
+		budbeeOrder.additionalServices = {
+		        "identificationCheckRequired": false,
+		        "recipientMinimumAge": 0,
+		        "recipientMustMatchEndCustomer": false,
+		        "numberOfMissRetries": null
+			};
+	}
 
 	let parcels = [];
 	let shippingContainers = [];

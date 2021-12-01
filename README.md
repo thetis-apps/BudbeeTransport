@@ -42,6 +42,26 @@ For your convenience the application is initially configured to use our test cre
 
 To get your own credentials contact Budbee.
 
+# Budbee specific options
+
+It is possible to set Budbee specific options by creating an object in the data document of the individual shipments:
+
+```
+{
+  "BudbeeTransport": {
+    "requireSignature": false,
+    "additionalServices": {
+      "numberOfMissRetries": null,
+      "recipientMinimumAge": 0,
+      "identificationCheckRequired": false,
+      "recipientMustMatchEndCustomer": false
+    }
+  }
+}
+```
+
+If no object is contained in the data document of a shipment, the above shown values apply.
+
 # Events
 
 ## Packing completed
