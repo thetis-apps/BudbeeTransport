@@ -62,28 +62,52 @@ exports.initializer = async (input, context) => {
 
 };
 
+async function getPack() {
+	
+	const apiUrl = "https://public.thetis-pack.com/rest";
+	
+	let apiKey = process.env.ApiKey;  
+    let pack = axios.create({
+    		baseURL: apiUrl,
+    		headers: { "ThetisAccessToken": apiKey, "Content-Type": "application/json" }
+    	});
+	
+	pack.interceptors.response.use(function (response) {
+			console.log("SUCCESS " + JSON.stringify(response.data));
+ 	    	return response;
+		}, function (error) {
+			console.log(JSON.stringify(error));
+			if (error.response) {
+				console.log("FAILURE " + error.response.status + " - " + JSON.stringify(error.response.data));
+			}
+	    	return Promise.reject(error);
+		});
+
+	return pack;
+}
+
 async function getIMS() {
 	
     const authUrl = "https://auth.thetis-ims.com/oauth2/";
     const apiUrl = "https://api.thetis-ims.com/2/";
 
-	var clientId = process.env.ClientId;   
-	var clientSecret = process.env.ClientSecret; 
-	var apiKey = process.env.ApiKey;  
+	let clientId = process.env.ClientId;   
+	let clientSecret = process.env.ClientSecret; 
+	let apiKey = process.env.ApiKey;  
 	
     let data = clientId + ":" + clientSecret;
 	let base64data = Buffer.from(data, 'UTF-8').toString('base64');	
 	
-	var imsAuth = axios.create({
+	let imsAuth = axios.create({
 			baseURL: authUrl,
 			headers: { Authorization: "Basic " + base64data, 'Content-Type': "application/x-www-form-urlencoded" },
 			responseType: 'json'
 		});
     
-    var response = await imsAuth.post("token", 'grant_type=client_credentials');
-    var token = response.data.token_type + " " + response.data.access_token;
+    let response = await imsAuth.post("token", 'grant_type=client_credentials');
+    let token = response.data.token_type + " " + response.data.access_token;
     
-    var ims = axios.create({
+    let ims = axios.create({
     		baseURL: apiUrl,
     		headers: { "Authorization": token, "x-api-key": apiKey, "Content-Type": "application/json" }
     	});
@@ -117,7 +141,7 @@ async function getBudbee(setup) {
 		baseURL: budbeeUrl, 
 		headers: { "Authorization": "Basic " + new Buffer.from(authentication).toString('base64') },
 		validateStatus: function (status) {
-		    return status >= 200 && status < 300 || status == 404; // default
+		    return status >= 200 && status < 300 || status == 404 || status == 400; // default
 		}
 	});
 	
@@ -181,7 +205,12 @@ exports.deliveryNoteCancelledHandler = async (event, context) => {
     var detail = event.detail;
     var shipmentId = detail.shipmentId;
  
-	let ims = await getIMS();
+	let ims;
+	if (detail.contextId == '278') {
+		ims = await getPack();  
+	} else {
+		ims = await getIMS();
+	}
 	
     let response = await ims.get("shipments/" + shipmentId);
     let shipment = response.data;
@@ -209,7 +238,12 @@ exports.packingCompletedHandler = async (event, context) => {
     var detail = event.detail;
     var shipmentId = detail.shipmentId;
  
-	let ims = await getIMS();
+	let ims;
+	if (detail.contextId == '278') {
+		ims = await getPack();  
+	} else {
+		ims = await getIMS();
+	}
 	
     let response = await ims.get("shipments/" + shipmentId);
     let shipment = response.data;
@@ -238,19 +272,21 @@ exports.packingCompletedHandler = async (event, context) => {
 		    "additionalInfo": shipment.notesOnDelivery
 		};
   
+	budbeeOrder.requireSignature = false;
+	budbeeOrder.additionalServices = {
+	        "identificationCheckRequired": false,
+	        "recipientMinimumAge": 0,
+	        "recipientMustMatchEndCustomer": false,
+	        "numberOfMissRetries": null
+		};
+
 	let dataDocument = JSON.parse(shipment.dataDocument);
-	let shipmentSetup = dataDocument.BudbeeTransport;
-	if (shipmentSetup) {
-		budbeeOrder.requireSignature = shipmentSetup.requireSignature;
-		budbeeOrder.additionalServices = shipmentSetup.additionalServices;  
-	} else {
-		budbeeOrder.requireSignature = false;
-		budbeeOrder.additionalServices = {
-		        "identificationCheckRequired": false,
-		        "recipientMinimumAge": 0,
-		        "recipientMustMatchEndCustomer": false,
-		        "numberOfMissRetries": null
-			};
+	if (dataDocument) {
+		let shipmentSetup = dataDocument.BudbeeTransport;
+		if (shipmentSetup) {
+			budbeeOrder.requireSignature = shipmentSetup.requireSignature;
+			budbeeOrder.additionalServices = shipmentSetup.additionalServices;  
+		}
 	}
 
 	let parcels = [];
@@ -274,7 +310,7 @@ exports.packingCompletedHandler = async (event, context) => {
 	budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.multiple.orders-v2+json";
     response = await budbee.post("multiple/orders", budbeeOrder);
 
-	if (response.status == 404) {
+	if (response.status == 400 || response.status == 404) {
 		
 		// Send error messages
 		
