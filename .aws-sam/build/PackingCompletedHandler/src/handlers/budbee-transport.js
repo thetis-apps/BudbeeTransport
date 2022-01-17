@@ -271,7 +271,7 @@ exports.packingCompletedHandler = async (event, context) => {
 		    "outsideDoor": true,
 		    "additionalInfo": shipment.notesOnDelivery
 		};
-  
+
 	budbeeOrder.requireSignature = false;
 	budbeeOrder.additionalServices = {
 	        "identificationCheckRequired": false,
@@ -289,6 +289,11 @@ exports.packingCompletedHandler = async (event, context) => {
 		}
 	}
 
+	if (shipment.deliverToPickUpPoint) {
+		budbeeOrder.productCodes = [ "DLVBOX" ];
+		budbeeOrder.boxDelivery = { "selectedBox": shipment.pickUpPointId };
+	}
+
 	let parcels = [];
 	let shippingContainers = [];
 	shippingContainers = shipment.shippingContainers;
@@ -296,16 +301,18 @@ exports.packingCompletedHandler = async (event, context) => {
 		let parcel = new Object();
 		let dimensions = shippingContainer.dimensions;
 		parcel.dimensions = {
-		        "width": dimensions.width * 10,
-		        "height": dimensions.height * 10,
-		        "length": dimensions.length * 10,
+		        "width": dimensions.width * 100,
+		        "height": dimensions.height * 100,
+		        "length": dimensions.length * 100,
 		        "weight": shippingContainer.grossWeight * 1000,
-		        "volume": shippingContainer.volume * 10000
+		        "volume": shippingContainer.volume * 1000000
 		    };
 		parcels.push(parcel);
 	});
 	
 	budbeeOrder.parcels = parcels;
+	
+	console.log(JSON.stringify(budbeeOrder));
 
 	budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.multiple.orders-v2+json";
     response = await budbee.post("multiple/orders", budbeeOrder);

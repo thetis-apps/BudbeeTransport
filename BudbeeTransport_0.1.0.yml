@@ -8,8 +8,8 @@ Metadata:
     Description: Application for integrating Thetis IMS with the freight carrier Budbee.
     Author: thetis-apps
     SpdxLicenseId: Apache-2.0
-    LicenseUrl: ../../LICENSE.txt
-    ReadmeUrl: ../../README.md
+    LicenseUrl: s3://aws-sam-cli-managed-default-samclisourcebucket-1q52gionhjeg3/4612b8d5aa75b9b9936c9b7b9e6c7e82
+    ReadmeUrl: s3://aws-sam-cli-managed-default-samclisourcebucket-1q52gionhjeg3/2b0b297e92a027ed369fab57379d4703
     Labels:
     - thetis-ims
     HomePageUrl: https://github.com/thetis-apps/BudbeeTransport
@@ -71,7 +71,7 @@ Resources:
           Fn::GetAtt:
           - DeadLetterQueue
           - Arn
-      CodeUri: PackingCompletedHandler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-1q52gionhjeg3/a680586968a1908b9f5f9c231ae5911b
   DeliveryNoteCancelledHandler:
     Type: AWS::Serverless::Function
     Properties:
@@ -109,7 +109,7 @@ Resources:
           Fn::GetAtt:
           - DeadLetterQueue
           - Arn
-      CodeUri: DeliveryNoteCancelledHandler
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-1q52gionhjeg3/a680586968a1908b9f5f9c231ae5911b
   InitResource:
     Type: AWS::CloudFormation::CustomResource
     Properties:
@@ -134,7 +134,7 @@ Resources:
             Ref: ClientSecret
           ApiKey:
             Ref: ApiKey
-      CodeUri: InitializeFunction
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-1q52gionhjeg3/a680586968a1908b9f5f9c231ae5911b
   DeadLetterQueue:
     Type: AWS::SQS::Queue
     Properties: {}
