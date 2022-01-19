@@ -252,22 +252,29 @@ exports.packingCompletedHandler = async (event, context) => {
 
 	let budbee = await getBudbee(setup);
 
+	let address; 
+	if (shipment.deliverToPickUpPoint) {
+		address = shipment.customerAddress;
+	} else {
+		address = shipment.deliveryAddress;
+	}
+
 	let budbeeOrder = new Object();
 	budbeeOrder.collectionId = setup.collectionId;
 	budbeeOrder.cart = { cartId: shipment.shipmentNumber };
 	budbeeOrder.delivery = {
-		    "name": shipment.deliveryAddress.addressee,
-		    "referencePerson": shipment.deliveryAddress.careOf,
+		    "name": address.addressee,
+		    "referencePerson": address.careOf,
 		    "telephoneNumber": shipment.contactPerson.mobileNumber,
 		    "email": shipment.contactPerson.email,
 		    "address": {
-		      "street": shipment.deliveryAddress.streetNameAndNumber,
-		      "street2": shipment.deliveryAddress.districtOrCityArea,
-		      "postalCode": shipment.deliveryAddress.postalCode,
-		      "city": shipment.deliveryAddress.cityTownOrVillage,
-		      "country": shipment.deliveryAddress.countryCode
+		      "street": address.streetNameAndNumber,
+		      "street2": address.districtOrCityArea,
+		      "postalCode": address.postalCode,
+		      "city": address.cityTownOrVillage,
+		      "country": address.countryCode
 		    },
-		    "doorCode": shipment.deliveryAddress.floorBlockOrSuite,
+		    "doorCode": address.floorBlockOrSuite,
 		    "outsideDoor": true,
 		    "additionalInfo": shipment.notesOnDelivery
 		};
