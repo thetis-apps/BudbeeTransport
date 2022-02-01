@@ -343,23 +343,28 @@ exports.packingCompletedHandler = async (event, context) => {
     	// Set tracking number on shipping containers and attach labels to shipment
 
 		shippingContainers = shipment.shippingContainers;
-		let parcels = response.data.parcels;
-		for (let i = 0; i < response.data.parcels.length; i++) {
+		budbeeOrder = response.data;
+		let parcels = budbeeOrder.parcels;
+		for (let i = 0; i < parcels.length; i++) {
 			let shippingContainer = shippingContainers[i];
 			let parcel = parcels[i];
+			
+			budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.parcels-v1+json";
+		    response = await budbee.get("parcels/" + parcel.packageId + "/tracking-url");
+		    let tracking = response.data;
 			
 			let shippingLabel = new Object();
 			shippingLabel.fileName = "SHIPPING_LABEL_" + shipmentId + ".pdf";
 			shippingLabel.presignedUrl = parcel.label;
 			await ims.post("shipments/"+ shipmentId + "/attachments", shippingLabel);
 
-			await ims.patch("shippingContainers/" + shippingContainer.id, { trackingNumber: parcel.packageId });
+			await ims.patch("shippingContainers/" + shippingContainer.id, { trackingNumber: parcel.packageId, trackingUrl: tracking.url });
 			
 		}
 		
 		// Set carriers shipment id
 		
-		await ims.patch("shipments/" + shipment.id, { carriersShipmentNumber: response.data.id });
+		await ims.patch("shipments/" + shipment.id, { carriersShipmentNumber: budbeeOrder.id });
 		
 		var message = new Object();
 		message.time = Date.now();
