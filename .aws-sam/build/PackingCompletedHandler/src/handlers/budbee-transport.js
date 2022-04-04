@@ -141,7 +141,7 @@ async function getBudbee(setup) {
 		baseURL: budbeeUrl, 
 		headers: { "Authorization": "Basic " + new Buffer.from(authentication).toString('base64') },
 		validateStatus: function (status) {
-		    return status >= 200 && status < 300 || status == 404 || status == 400; // default
+		    return true; // default
 		}
 	});
 	
@@ -324,7 +324,7 @@ exports.packingCompletedHandler = async (event, context) => {
 	budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.multiple.orders-v2+json";
     response = await budbee.post("multiple/orders", budbeeOrder);
 
-	if (response.status == 400 || response.status == 404) {
+	if (response.status >= 300) {
 		
 		// Send error messages
 		
@@ -333,7 +333,11 @@ exports.packingCompletedHandler = async (event, context) => {
 		message.time = Date.now();
 		message.source = "BudbeeTransport";
 		message.messageType = "ERROR";
-		message.messageText = "Failed to register shipment with Budbee. Budbee says: " + error.message;
+		if (error != null) {
+			message.messageText = "Failed to register shipment with Budbee. Budbee says: " + error.message;
+		} else {
+			message.messageText = "Budbee returned status code " + response.data + " with no error message.";
+		}
 		message.deviceName = detail.deviceName;
 		message.userId = detail.userId;
 		await ims.post("events/" + detail.eventId + "/messages", message);
