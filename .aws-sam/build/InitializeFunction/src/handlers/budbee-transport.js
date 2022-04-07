@@ -334,9 +334,9 @@ exports.packingCompletedHandler = async (event, context) => {
 		message.source = "BudbeeTransport";
 		message.messageType = "ERROR";
 		if (error != null) {
-			message.messageText = "Failed to register shipment with Budbee. Budbee says: " + error.message;
+			message.messageText = "Failed to register shipment " + shipment.shipmentNumber + " with Budbee. Budbee says: " + error.message;
 		} else {
-			message.messageText = "Budbee returned status code " + response.data + " with no error message.";
+			message.messageText = "Failed to register shipment " + shipment.shipmentNumber + " with Budbee. Budbee returned status code " + response.data + " with no error message.";
 		}
 		message.deviceName = detail.deviceName;
 		message.userId = detail.userId;
