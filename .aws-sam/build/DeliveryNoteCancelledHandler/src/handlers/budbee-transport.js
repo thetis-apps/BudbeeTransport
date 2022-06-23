@@ -62,30 +62,6 @@ exports.initializer = async (input, context) => {
 
 };
 
-async function getPack() {
-	
-	const apiUrl = "https://public.thetis-pack.com/rest";
-	
-	let apiKey = process.env.ApiKey;  
-    let pack = axios.create({
-    		baseURL: apiUrl,
-    		headers: { "ThetisAccessToken": apiKey, "Content-Type": "application/json" }
-    	});
-	
-	pack.interceptors.response.use(function (response) {
-			console.log("SUCCESS " + JSON.stringify(response.data));
- 	    	return response;
-		}, function (error) {
-			console.log(JSON.stringify(error));
-			if (error.response) {
-				console.log("FAILURE " + error.response.status + " - " + JSON.stringify(error.response.data));
-			}
-	    	return Promise.reject(error);
-		});
-
-	return pack;
-}
-
 async function getIMS() {
 	
     const authUrl = "https://auth.thetis-ims.com/oauth2/";
@@ -197,20 +173,14 @@ async function getSetup(ims, shipment) {
 	return setup;
 }
 
-
 exports.deliveryNoteCancelledHandler = async (event, context) => {
 
     console.info(JSON.stringify(event));
     
     var detail = event.detail;
+	let ims = await getIMS();
+	
     var shipmentId = detail.shipmentId;
- 
-	let ims;
-	if (detail.contextId == '278') {
-		ims = await getPack();  
-	} else {
-		ims = await getIMS();
-	}
 	
     let response = await ims.get("shipments/" + shipmentId);
     let shipment = response.data;
@@ -228,23 +198,36 @@ exports.deliveryNoteCancelledHandler = async (event, context) => {
 
 };
 
-/**
- * A Lambda function that gets shipping labels from budbee.
- */
-exports.packingCompletedHandler = async (event, context) => {
-	
-    console.info(JSON.stringify(event));
+exports.bookingCancelledHandler = async (event, context) => {
 
+    console.info(JSON.stringify(event));
+    
     var detail = event.detail;
+	let ims = await getIMS();
+	
     var shipmentId = detail.shipmentId;
  
-	let ims;
-	if (detail.contextId == '278') {
-		ims = await getPack();  
-	} else {
-		ims = await getIMS();
-	}
 	
+    let response = await ims.get("shipments/" + shipmentId);
+    let shipment = response.data;
+
+	if (shipment.carrierName == 'Budbee') {
+
+		let setup = await getSetup(ims, shipment);
+	
+		let budbee = await getBudbee(setup);
+
+		budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.multiple.orders-v1+json";
+		await budbee.delete("multiple/orders/" + shipment.carriersShipmentNumber);
+		
+	}
+
+};
+
+async function book(ims, detail) {
+	
+	var shipmentId = detail.shipmentId;
+ 
     let response = await ims.get("shipments/" + shipmentId);
     let shipment = response.data;
 
@@ -324,6 +307,7 @@ exports.packingCompletedHandler = async (event, context) => {
 	budbee.defaults.headers["Content-Type"] = "application/vnd.budbee.multiple.orders-v2+json";
     response = await budbee.post("multiple/orders", budbeeOrder);
 
+	let labels = [];
 	if (response.status >= 300) {
 		
 		// Send error messages
@@ -360,7 +344,7 @@ exports.packingCompletedHandler = async (event, context) => {
 			let shippingLabel = new Object();
 			shippingLabel.fileName = "SHIPPING_LABEL_" + shipmentId + ".pdf";
 			shippingLabel.presignedUrl = parcel.label;
-			await ims.post("shipments/"+ shipmentId + "/attachments", shippingLabel);
+			labels.push(shippingLabel);
 
 			await ims.patch("shippingContainers/" + shippingContainer.id, { trackingNumber: parcel.packageId, trackingUrl: tracking.url });
 			
@@ -369,6 +353,29 @@ exports.packingCompletedHandler = async (event, context) => {
 		// Set carriers shipment id
 		
 		await ims.patch("shipments/" + shipment.id, { carriersShipmentNumber: budbeeOrder.id });
+	}
+	
+	return labels;
+}
+
+
+/**
+ * A Lambda function that gets shipping labels from budbee.
+ */
+exports.packingCompletedHandler = async (event, context) => {
+	
+    console.info(JSON.stringify(event));
+
+    var detail = event.detail;
+	let ims = await getIMS();
+
+	let labels = await book(ims, detail);
+
+	if (labels.length > 0) {	
+		
+		for (let label of labels) {
+			await ims.post("shipments/"+ detail.shipmentId + "/attachments", label);
+		}
 		
 		var message = new Object();
 		message.time = Date.now();
@@ -383,4 +390,29 @@ exports.packingCompletedHandler = async (event, context) => {
 
 	return "done";
 
+};
+
+exports.bookingHandler = async (event, context) => {
+
+    console.info(JSON.stringify(event));
+
+    var detail = event.detail;
+
+	let ims = await getIMS();
+
+	await ims.patch('/documents/' + detail.documentId, { workStatus: 'ON_GOING' });
+	
+    let labels = await book(ims, detail);
+    
+	if (labels.length > 0) {
+		for (let label of labels) {
+			await ims.post('/documents/' + detail.documentId + '/attachments', label);
+		}
+		await ims.patch('/documents/' + detail.documentId, { workStatus: 'DONE' });
+    } else {
+		await ims.patch('/documents/' + detail.documentId, { workStatus: 'FAILED' });
+    }
+    
+	return "done";
+	
 };

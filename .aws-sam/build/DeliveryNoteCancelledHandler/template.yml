@@ -23,7 +23,7 @@ Metadata:
     ReadmeUrl: README.md
     Labels: ['thetis-ims']
     HomePageUrl: https://github.com/thetis-apps/BudbeeTransport
-    SemanticVersion: 0.3.0
+    SemanticVersion: 1.0.0
     SourceCodeUrl: https://github.com/thetis-apps/BudbeeTransport
     
 # Parameters of the application 
@@ -86,7 +86,47 @@ Resources:
           Fn::GetAtt:
           - DeadLetterQueue
           - Arn
-          
+  
+   # Function that will run when a transport booking is created in Thetis IMS
+  BookingHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Function that runs when a transport booking is created in Thetis IMS
+      Runtime: nodejs12.x
+      Handler: src/handlers/budbee-transport.bookingHandler
+      Environment:
+        Variables:
+          ClientId:
+            Ref: ClientId
+          ClientSecret:
+            Ref: ClientSecret
+          ApiKey:
+            Ref: ApiKey
+      Events:
+        Request:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+              - public.thetis-ims.com
+              detail-type:
+              - documentCreated
+              detail:
+                documentType:
+                - TRANSPORT_BOOKING
+                carrierName:
+                - Budbee
+                contextId:
+                - Ref: ContextId
+      MemorySize: 128
+      Timeout: 100
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn:
+          Fn::GetAtt:
+          - DeadLetterQueue
+          - Arn
+        
   # Function that will run when a delivery note is cancelled in Thetis IMS
   DeliveryNoteCancelledHandler:
     Type: AWS::Serverless::Function
@@ -125,6 +165,43 @@ Resources:
           - DeadLetterQueue
           - Arn
 
+  BookingCancelledHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Function that runs when a delivery note is cancelled in Thetis IMS
+      Runtime: nodejs12.x
+      Handler: src/handlers/budbee-transport.bookingCancelledHandler
+      Environment:
+        Variables:
+          ClientId:
+            Ref: ClientId
+          ClientSecret:
+            Ref: ClientSecret
+          ApiKey:
+            Ref: ApiKey
+      Events:
+        Request:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+              - public.thetis-ims.com
+              detail-type:
+              - documentCancelled
+              detail:
+                documentType:
+                - TRANSPORT_BOOKING
+                contextId:
+                - Ref: ContextId
+      MemorySize: 128
+      Timeout: 100
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn:
+          Fn::GetAtt:
+          - DeadLetterQueue
+          - Arn
+          
   # Initialisation of Budbee integration in context        
   InitResource:
     Type: AWS::CloudFormation::CustomResource
